@@ -1,5 +1,7 @@
 streamlit
+pydub
 speechrecognition
+streamlit-mic-recorder
 google-generativeai
 google-genai
 google-cloud-texttospeech
