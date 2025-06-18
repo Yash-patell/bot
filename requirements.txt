@@ -1,5 +1,6 @@
 streamlit
 pydub
+ffmpeg
 speechrecognition
 streamlit-mic-recorder
 google-generativeai
