@@ -181,7 +181,7 @@ def record_text():
 
             audio = speech.RecognitionAudio(content=raw_audio)
             config = speech.RecognitionConfig(
-                encoding=speech.RecognitionConfig.AudioEncoding.OGG_OPUS,
+                encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
                 sample_rate_hertz=recorded_sample_rate if recorded_sample_rate else 48000, # Use detected rate, fall back to 48000
                 language_code="en-US" # Essential!
             )
