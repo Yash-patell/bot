@@ -97,64 +97,11 @@ if "chat" not in st.session_state:
 # --- Voice capture --------------------------------------------------------------------------
 
 
-# def record_text():
-#     st.markdown("### 🎙️ Click to record your question")
-    
-#     # test_audio_path = "127389__acclivity__thetimehascome.wav"
-#     # with open(test_audio_path, "rb") as f:
-#     #     raw_audio = f.read()
-        
-#     # # Record audio from mic
-#     audio_data = mic_recorder(
-#         start_prompt="🎤 Start Recording",
-#         stop_prompt="🛑 Stop",
-#         use_container_width=True,
-#         key="mic"
-#     )
 
-#     if audio_data and isinstance(audio_data, dict) and "bytes" in audio_data:
-#         raw_audio = audio_data["bytes"]
-#         st.audio(raw_audio, format="audio/webm")
-#         st.write(f"✅ Audio recorded! Byte length: {len(raw_audio)}")
-
-#         try:
-#             # 🔐 Load credentials from Streamlit secrets
-#             creds_info = json.loads(st.secrets["GOOGLE_STT_JSON"])
-#             credentials = service_account.Credentials.from_service_account_info(creds_info)
-#             stt_client = speech.SpeechClient(credentials=credentials)
-
-#             # 🔊 Send raw audio as OGG_OPUS format
-#             audio = speech.RecognitionAudio(content=raw_audio)
-#             config = speech.RecognitionConfig(
-#                 encoding=speech.RecognitionConfig.AudioEncoding.OGG_OPUS   ,
-#                 # sample_rate_hertz = 48000,
-#                 language_code="en-US"
-#                 # Do NOT specify sample_rate_hertz for OGG_OPUS
-#             )
-
-#             # 🧠 Recognize speech
-#             response = stt_client.recognize(config=config, audio=audio)
-#             st.write("📜 Raw STT Response:", response)  # 🔍 Debug print
-
-
-#             # 📋 Parse and display transcript
-#             if response.results:
-#                 transcript = response.results[0].alternatives[0].transcript
-#                 st.success(f"🗣️ Recognized: {transcript}")
-#                 return transcript
-#             else:
-#                 st.warning("⚠️ No speech recognized. Try again.")
-
-#         except Exception as e:
-#             st.error(f"❌ STT Error: {e}")
-#     else:
-#         st.warning("⚠️ No audio captured or format mismatch.")
-
-#     return ""
 
 
 def record_text():
-    st.markdown("### 🎙️ Click to record your question")
+    st.markdown("### Click to record your question and Stop once you are done ")
 
     audio_data = mic_recorder(
         start_prompt="🎤 Start Recording",
@@ -166,12 +113,12 @@ def record_text():
     if audio_data and isinstance(audio_data, dict) and "bytes" in audio_data:
         raw_audio = audio_data["bytes"]
         recorded_sample_rate = audio_data.get("sample_rate") # Get actual sample rate
-        st.audio(raw_audio, format="audio/webm") # Display the recorded WebM audio
+        # st.audio(raw_audio, format="audio/webm") # Display the recorded WebM audio
         st.write(f"✅ Audio recorded! Byte length: {len(raw_audio)}")
-        if recorded_sample_rate:
-            st.write(f"Detected sample rate from mic: {recorded_sample_rate} Hz")
-        else:
-            st.warning("Could not detect sample rate from mic_recorder. Defaulting to 48000 Hz.")
+        # if recorded_sample_rate:
+        #     st.write(f"Detected sample rate from mic: {recorded_sample_rate} Hz")
+        # else:
+        #     st.warning("Could not detect sample rate from mic_recorder. Defaulting to 48000 Hz.")
 
 
         try:
@@ -264,4 +211,5 @@ if user_question:
 
 
         audio_stream = speak_text_google(response.text)
-        st.audio(audio_stream, format="audio/mp3")
+        st.audio(audio_stream, format="audio/mp3",autoplay=True,loop = False)
+        st.write("This is the response audio from the bot you can Download it also")
