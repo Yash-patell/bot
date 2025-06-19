@@ -8,27 +8,34 @@ import tempfile
 import os
 from google.cloud import texttospeech
 from streamlit_mic_recorder import mic_recorder
+from google.cloud import speech
+import json  # Add at the top
+import json
+from google.oauth2 import service_account
 
 
 
 
-# api for google cloud
-with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as f:
-    f.write(st.secrets["GOOGLE_TTS_JSON"].encode())
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = f.name
-    
-    
-# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "gen-lang-client-0664909927-d9606abce1f5.json"
+try:
+    tts_creds_info = json.loads(st.secrets["GOOGLE_TTS_JSON"])
+    tts_credentials = service_account.Credentials.from_service_account_info(tts_creds_info)
+    tts_client_global = texttospeech.TextToSpeechClient(credentials=tts_credentials)
+except KeyError:
+    st.error("Missing GOOGLE_TTS_JSON secret. Please configure it in Streamlit Cloud.")
+    st.stop() # Stop the app if secrets are missing
+
+# ... (rest of your global Gemini setup, etc.) ...
+
 # --- Text-to-Speech with Google Cloud ---
 def speak_text_google(text):
-    client = texttospeech.TextToSpeechClient()
+    # USE THE GLOBALLY INITIALIZED CLIENT HERE, DO NOT RE-INITIALIZE
     synthesis_input = texttospeech.SynthesisInput(text=text)
     voice = texttospeech.VoiceSelectionParams(
         language_code="en-IN",
         name="en-IN-Standard-F"
     )
     audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
-    response = client.synthesize_speech(
+    response = tts_client_global.synthesize_speech( # <--- Changed this line
         input=synthesis_input, voice=voice, audio_config=audio_config
     )
     return BytesIO(response.audio_content)
@@ -88,46 +95,116 @@ if "chat" not in st.session_state:
     )
 
 # --- Voice capture --------------------------------------------------------------------------
-from pydub import AudioSegment
+
+
+# def record_text():
+#     st.markdown("### 🎙️ Click to record your question")
+    
+#     # test_audio_path = "127389__acclivity__thetimehascome.wav"
+#     # with open(test_audio_path, "rb") as f:
+#     #     raw_audio = f.read()
+        
+#     # # Record audio from mic
+#     audio_data = mic_recorder(
+#         start_prompt="🎤 Start Recording",
+#         stop_prompt="🛑 Stop",
+#         use_container_width=True,
+#         key="mic"
+#     )
+
+#     if audio_data and isinstance(audio_data, dict) and "bytes" in audio_data:
+#         raw_audio = audio_data["bytes"]
+#         st.audio(raw_audio, format="audio/webm")
+#         st.write(f"✅ Audio recorded! Byte length: {len(raw_audio)}")
+
+#         try:
+#             # 🔐 Load credentials from Streamlit secrets
+#             creds_info = json.loads(st.secrets["GOOGLE_STT_JSON"])
+#             credentials = service_account.Credentials.from_service_account_info(creds_info)
+#             stt_client = speech.SpeechClient(credentials=credentials)
+
+#             # 🔊 Send raw audio as OGG_OPUS format
+#             audio = speech.RecognitionAudio(content=raw_audio)
+#             config = speech.RecognitionConfig(
+#                 encoding=speech.RecognitionConfig.AudioEncoding.OGG_OPUS   ,
+#                 # sample_rate_hertz = 48000,
+#                 language_code="en-US"
+#                 # Do NOT specify sample_rate_hertz for OGG_OPUS
+#             )
+
+#             # 🧠 Recognize speech
+#             response = stt_client.recognize(config=config, audio=audio)
+#             st.write("📜 Raw STT Response:", response)  # 🔍 Debug print
+
+
+#             # 📋 Parse and display transcript
+#             if response.results:
+#                 transcript = response.results[0].alternatives[0].transcript
+#                 st.success(f"🗣️ Recognized: {transcript}")
+#                 return transcript
+#             else:
+#                 st.warning("⚠️ No speech recognized. Try again.")
+
+#         except Exception as e:
+#             st.error(f"❌ STT Error: {e}")
+#     else:
+#         st.warning("⚠️ No audio captured or format mismatch.")
+
+#     return ""
+
 
 def record_text():
     st.markdown("### 🎙️ Click to record your question")
 
     audio_data = mic_recorder(
-        start_prompt="🎤 Start Recording", 
-        stop_prompt="🛑 Stop", 
-        use_container_width=True, 
+        start_prompt="🎤 Start Recording",
+        stop_prompt="🛑 Stop",
+        use_container_width=True,
         key="mic"
     )
 
     if audio_data and isinstance(audio_data, dict) and "bytes" in audio_data:
         raw_audio = audio_data["bytes"]
-        st.audio(raw_audio, format="audio/wav")
-        st.write("✅ Audio recorded! Byte length:", len(raw_audio))
+        recorded_sample_rate = audio_data.get("sample_rate") # Get actual sample rate
+        st.audio(raw_audio, format="audio/webm") # Display the recorded WebM audio
+        st.write(f"✅ Audio recorded! Byte length: {len(raw_audio)}")
+        if recorded_sample_rate:
+            st.write(f"Detected sample rate from mic: {recorded_sample_rate} Hz")
+        else:
+            st.warning("Could not detect sample rate from mic_recorder. Defaulting to 48000 Hz.")
 
-        # 🔁 Convert audio to PCM WAV using pydub
-        audio = AudioSegment.from_file(io.BytesIO(raw_audio), format="wav")
-        pcm_wav = io.BytesIO()
-        audio.export(pcm_wav, format="wav")
-        pcm_wav.seek(0)
 
-        reco = sr.Recognizer()
-        with sr.AudioFile(pcm_wav) as source:
-            audio_data = reco.record(source)
-            try:
-                text = reco.recognize_google(audio_data)
-                st.write(text)
-                st.success(f"🗣️ Recognized: {text}")
-                return text
-            except sr.UnknownValueError:
-                st.error("Could not understand the audio.")
-            except sr.RequestError as e:
-                st.error(f"STT error: {e}")
-    elif audio_data:
-        st.warning("⚠️ Audio data not in expected format.")
+        try:
+            stt_creds_info = json.loads(st.secrets["GOOGLE_STT_JSON"])
+            stt_credentials = service_account.Credentials.from_service_account_info(stt_creds_info)
+            stt_client = speech.SpeechClient(credentials=stt_credentials)
+
+            audio = speech.RecognitionAudio(content=raw_audio)
+            config = speech.RecognitionConfig(
+                encoding=speech.RecognitionConfig.AudioEncoding.OGG_OPUS,
+                sample_rate_hertz=recorded_sample_rate if recorded_sample_rate else 48000, # Use detected rate, fall back to 48000
+                language_code="en-US" # Essential!
+            )
+
+            response = stt_client.recognize(config=config, audio=audio)
+            # st.write("📜 Raw STT Response:", response)
+
+            if response.results:
+                transcript = response.results[0].alternatives[0].transcript
+                st.success(f"🗣️ Recognized: {transcript}")
+                return transcript
+            else:
+                st.warning("⚠️ No speech recognized. Try again.")
+                st.info("Ensure microphone is working, speak clearly, and check background noise.")
+
+        except KeyError:
+            st.error("Missing GOOGLE_STT_JSON secret. Please configure it in Streamlit Cloud.")
+        except Exception as e:
+            st.error(f"❌ STT Error: {e}")
+    else:
+       return None
 
     return ""
-
 
 # --- Build prompt ---
 def build_prompt(user_question):

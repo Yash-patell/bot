@@ -1,6 +1,7 @@
 streamlit
 pydub
 ffmpeg
+google-cloud-speech
 speechrecognition
 streamlit-mic-recorder
 google-generativeai
